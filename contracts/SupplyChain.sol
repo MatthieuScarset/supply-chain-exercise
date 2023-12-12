@@ -8,10 +8,10 @@ contract SupplyChain {
 
   // <skuCount> (default: 0)
   // @see https://docs.soliditylang.org/en/v0.8.23/control-structures.html#default-value
-  int public skuCount;
+  uint public skuCount;
 
   // <items mapping>
-  mapping(int => Item) public items;
+  mapping(uint => Item) public items;
 
   // <enum State: ForSale, Sold, Shipped, Received>
   enum State {
@@ -24,7 +24,7 @@ contract SupplyChain {
   // <struct Item: name, sku, price, state, seller, and buyer>
   struct Item {
     string name;
-    int sku;
+    uint sku;
     uint price;
     State state;
     address payable seller;
@@ -35,10 +35,10 @@ contract SupplyChain {
    * Events
    */
 
-  event LogForSale(int sku);
-  event LogSold(int sku);
-  event LogShipped(int sku);
-  event LogReceived(int sku);
+  event LogForSale(uint sku);
+  event LogSold(uint sku);
+  event LogShipped(uint sku);
+  event LogReceived(uint sku);
 
   /*
    * Modifiers
@@ -49,12 +49,12 @@ contract SupplyChain {
     _;
   }
 
-  modifier isSeller(int _sku) {
+  modifier isSeller(uint _sku) {
     require (msg.sender == items[_sku].seller);
     _;
   }
 
-  modifier isBuyer(int _sku) {
+  modifier isBuyer(uint _sku) {
     require (msg.sender == items[_sku].buyer);
     _;
   }
@@ -64,7 +64,7 @@ contract SupplyChain {
     _;
   }
 
-  modifier refundExtraValue(int _sku) {
+  modifier refundExtraValue(uint _sku) {
     _;
     //refund them after logic.
     uint _price = items[_sku].price;
@@ -75,31 +75,30 @@ contract SupplyChain {
   /**
    * State modifiers
    */
-  modifier itemIsForSale(int _sku) {
+  modifier itemIsForSale(uint _sku) {
     // Make sure item exists because uninitialized item's state is 0 too.
     require (items[_sku].sku > 0, "Item does not exist");
     require (items[_sku].state == State.ForSale, "Item is not for sale");
     _;
   }
 
-  modifier itemIsSold(int _sku) {
+  modifier itemIsSold(uint _sku) {
     require (items[_sku].state == State.Sold, "Item is not sold");
     _;
   }
 
-  modifier itemIsShipped(int _sku) {
+  modifier itemIsShipped(uint _sku) {
     require (items[_sku].state == State.Shipped, "Item is not shipped");
     _;
   }
 
-  modifier itemIsReceived(int _sku) {
+  modifier itemIsReceived(uint _sku) {
     require (items[_sku].state == State.Received, "Item is not received");
     _;
   }
 
-  constructor() public {
+  constructor() {
     owner = msg.sender;
-    skuCount = 1;
   }
 
   function addItem(string memory _name, uint _price) public returns (bool) {
@@ -108,15 +107,15 @@ contract SupplyChain {
       sku: skuCount,
       price: _price,
       state: State.ForSale,
-      seller: msg.sender,
-      buyer: address(0)
+      seller: payable(address(msg.sender)),
+      buyer: payable(address(0))
     });
     skuCount = skuCount + 1;
     emit LogForSale(skuCount);
     return true;
   }
 
-  function buyItem(int _sku)
+  function buyItem(uint _sku)
     public
     payable
     itemIsForSale(_sku)
@@ -126,13 +125,13 @@ contract SupplyChain {
   {
     Item storage item = items[_sku];
     item.seller.transfer(item.price);
-    item.buyer = msg.sender;
+    item.buyer = payable(address(msg.sender));
     item.state = State.Sold;
     emit LogSold(_sku);
     return true;
   }
 
-  function shipItem(int _sku)
+  function shipItem(uint _sku)
     public
     itemIsSold(_sku)
     isSeller(_sku)
@@ -144,9 +143,10 @@ contract SupplyChain {
     return true;
   }
 
-  function receiveItem(int _sku)
+  function receiveItem(uint _sku)
     public
-    itemIsShipped(_sku) isBuyer(_sku)
+    itemIsShipped(_sku)
+    isBuyer(_sku)
     isBuyer(_sku)
     returns (bool)
   {
@@ -156,19 +156,19 @@ contract SupplyChain {
     return true;
   }
 
-  function fetchItem(int _sku)
+  function fetchItem(uint _sku)
     public
     view
-    returns (string memory name, int sku, uint price, uint state, address seller, address buyer)
+    returns (string memory name, uint sku, uint price, uint state, address seller, address buyer)
   {
-    Item storage item = items[_sku];
+    Item memory item = items[_sku];
     return (
       item.name,
       item.sku,
       item.price,
       uint(item.state),
-      seller,
-      buyer
+      item.seller,
+      item.buyer
     );
   }
 }
