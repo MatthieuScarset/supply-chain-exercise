@@ -77,7 +77,7 @@ contract SupplyChain {
    */
   modifier itemIsForSale(uint _sku) {
     // Make sure item exists because uninitialized item's state is 0 too.
-    require (items[_sku].sku > 0, "Item does not exist");
+    require (items[_sku].seller != address(0), "Item does not exist");
     require (items[_sku].state == State.ForSale, "Item is not for sale");
     _;
   }
@@ -119,7 +119,7 @@ contract SupplyChain {
     public
     payable
     itemIsForSale(_sku)
-    paidEnough(msg.value)
+    paidEnough(items[_sku].price)
     refundExtraValue(_sku)
     returns (bool)
   {
@@ -146,7 +146,6 @@ contract SupplyChain {
   function receiveItem(uint _sku)
     public
     itemIsShipped(_sku)
-    isBuyer(_sku)
     isBuyer(_sku)
     returns (bool)
   {
